@@ -27,13 +27,12 @@ var db = new sqlite3.Database(db_filename, sqlite3.OPEN_READONLY, (err) => {
 
 function TestSQL()
 {
-	db.all("SELECT * FROM Consumption WHERE state_abbreviation = ? ORDER BY year", ["MN"], (err,rows) =>{
-		rows.forEach(function (row) {
-			console.log(row.coal,row.renewable,row.year);
+        db.all("SELECT * FROM Consumption ORDER BY state_abbreviation WHERE year = '1960'",(err,rows) =>{
+			rows.forEach(function (row) {
+				console.log(row.state_abbreviation,row.year);
 		})
 		
 	});
-	
 	
 }
 
@@ -44,8 +43,15 @@ app.use(express.static(public_dir));
 app.get('/', (req, res) => {
     ReadFile(path.join(template_dir, 'index.html')).then((template) => {
         let response = template;
-        // modify `response` here
-        WriteHtml(res, response);
+		var stringHold = "";
+        db.all("SELECT * FROM Consumption ORDER BY year", (err,rows) =>{
+			rows.forEach(function (row) {
+				stringHold=stringHold+"<tr>"+"<td>"+row.state_abbreviation+"</td>" +"<td>"+row.coal+"</td>"+"<td>"+row.natural_gas+"</td>"+"<td>"+row.nuclear+"</td>"+"<td>"+row.petroleum+"</td>"+"<td>"+row.renewable+"</td>"+"</tr>";
+				})
+		
+		});
+			response=response.replace("replace",stringHold);
+			WriteHtml(res, response);
     }).catch((err) => {
         Write404Error(res);
     });
