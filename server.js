@@ -44,13 +44,15 @@ app.get('/', (req, res) => {
     ReadFile(path.join(template_dir, 'index.html')).then((template) => {
         let response = template;
 		var stringHold = "";
-        db.all("SELECT * FROM Consumption ORDER BY year", (err,rows) =>{
-			rows.forEach(function (row) {
-				stringHold=stringHold+"<tr>"+"<td>"+row.state_abbreviation+"</td>" +"<td>"+row.coal+"</td>"+"<td>"+row.natural_gas+"</td>"+"<td>"+row.nuclear+"</td>"+"<td>"+row.petroleum+"</td>"+"<td>"+row.renewable+"</td>"+"</tr>";
-				})
-		
-		});
-			response=response.replace("replace",stringHold);
+		var replacePromise= new Promise(resolve,reject)=>{
+			db.all("SELECT * FROM Consumption ORDER BY year", (err,rows) =>{
+				rows.forEach(function (row) {
+					stringHold=stringHold+"<tr>"+"<td>"+row.state_abbreviation+"</td>" +"<td>"+row.coal+"</td>"+"<td>"+row.natural_gas+"</td>"+"<td>"+row.nuclear+"</td>"+"<td>"+row.petroleum+"</td>"+"<td>"+row.renewable+"</td>"+"</tr>";
+					})
+					resolve(stringHold);
+			});
+		}
+			replacePromise.then(data=>{response=response.replace("replace",data)};
 			WriteHtml(res, response);
     }).catch((err) => {
         Write404Error(res);
