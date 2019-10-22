@@ -24,15 +24,14 @@ var db = new sqlite3.Database(db_filename, sqlite3.OPEN_READONLY, (err) => {
 		TestSQL();
     }
 });
-
 function TestSQL()
 {
-        db.all("SELECT * FROM Consumption ORDER BY state_abbreviation WHERE year = '1960'",(err,rows) =>{
+     /*   db.all('SELECT * FROM Consumption WHERE year = ? ORDER BY state_abbreviation',['1960'],(err,rows) =>{
 			rows.forEach(function (row) {
 				console.log(row.state_abbreviation,row.year);
 		})
 		
-	});
+	});*/
 	
 }
 
@@ -44,16 +43,19 @@ app.get('/', (req, res) => {
     ReadFile(path.join(template_dir, 'index.html')).then((template) => {
         let response = template;
 		var stringHold = "";
-		var replacePromise= new Promise(resolve,reject)=>{
+		var replacePromise= new Promise((resolve,reject)=>{
 			db.all("SELECT * FROM Consumption ORDER BY year", (err,rows) =>{
 				rows.forEach(function (row) {
 					stringHold=stringHold+"<tr>"+"<td>"+row.state_abbreviation+"</td>" +"<td>"+row.coal+"</td>"+"<td>"+row.natural_gas+"</td>"+"<td>"+row.nuclear+"</td>"+"<td>"+row.petroleum+"</td>"+"<td>"+row.renewable+"</td>"+"</tr>";
 					})
 					resolve(stringHold);
 			});
-		}
-			replacePromise.then(data=>{response=response.replace("replace",data)};
-			WriteHtml(res, response);
+		})
+			replacePromise.then(data=>{
+				response=response.replace("replace",data);
+				WriteHtml(res, response);
+			});
+			
     }).catch((err) => {
         Write404Error(res);
     });
@@ -63,8 +65,22 @@ app.get('/', (req, res) => {
 app.get('/year/:selected_year', (req, res) => {
     ReadFile(path.join(template_dir, 'year.html')).then((template) => {
         let response = template;
-        // modify `response` here
-        WriteHtml(res, response);
+		let year = req.url.substring(6);
+		var stringHold = "";
+		var replacePromise= new Promise((resolve,reject)=>{
+			db.all('SELECT * FROM Consumption WHERE year = ? ORDER BY state_abbreviation',[year],(err,rows) =>{
+				rows.forEach(function (row) {
+					total=row.coal+row.natural_gas+row.nuclear+row.petroleum+row.renewable;
+					stringHold=stringHold+"<tr>"+"<td>"+row.state_abbreviation+"</td>" +"<td>"+row.coal+"</td>"+"<td>"+row.natural_gas+"</td>"+"<td>"+row.nuclear+"</td>"+"<td>"+row.petroleum+"</td>"+"<td>"+row.renewable+"</td>"+"<td>"+total+"</td>"+"</tr>";
+					})
+					resolve(stringHold);
+			});
+		})
+			replacePromise.then(data=>{
+				response=response.replace("replace",data);
+				response= response.replace("In Depth Analysis", "In Depth Analysis of "+year);
+				WriteHtml(res, response);
+			});
     }).catch((err) => {
         Write404Error(res);
     });
@@ -74,8 +90,26 @@ app.get('/year/:selected_year', (req, res) => {
 app.get('/state/:selected_state', (req, res) => {
     ReadFile(path.join(template_dir, 'state.html')).then((template) => {
         let response = template;
+		let state=req.url.substring(7);
+		let stringHold="";
+		let stateName;
+		var replacePromise= new Promise((resolve,reject)=>{
+			db.each('SELECT * FROM States WHERE state_abbreviation = ?',[state],(err,rows)=>{stateName= rows.state_name});
+			db.all('SELECT * FROM Consumption WHERE state_abbreviation = ? ORDER BY year',[state],(err,rows) =>{
+				rows.forEach(function (row) {
+					total=row.coal+row.natural_gas+row.nuclear+row.petroleum+row.renewable;
+					stringHold=stringHold+"<tr>"+"<td>"+row.state_abbreviation+"</td>" +"<td>"+row.coal+"</td>"+"<td>"+row.natural_gas+"</td>"+"<td>"+row.nuclear+"</td>"+"<td>"+row.petroleum+"</td>"+"<td>"+row.renewable+"</td>"+"<td>"+total+"</td>"+"</tr>";
+					})
+					resolve(stringHold);
+			});
+		})
+			replacePromise.then(data=>{
+				response=response.replace("replace",data);
+				response=response.replace("Yearly Snapshot", "Yearly Snapshot of "+ stateName);
+				response= response.replace("In Depth Analysis", "In Depth Analysis of "+stateName);
+				WriteHtml(res, response);
+			});
         // modify `response` here
-        WriteHtml(res, response);
     }).catch((err) => {
         Write404Error(res);
     });
