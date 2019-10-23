@@ -119,25 +119,29 @@ app.get('/state/:selected_state', (req, res) => {
 app.get('/energy-type/:selected_energy_type', (req, res) => {
     ReadFile(path.join(template_dir, 'energy.html')).then((template) => {
         let response = template;
-        // modify `response` here
-        WriteHtml(res, response);
+        let energy = req.url.substring(9);
+        let stringHold = "";
+  		var replacePromise = new Promise((resolve,reject)=> {
+  			db.all('SELECT year, state_abbreviation,coal FROM Consumption ORDER BY year',(err,rows)=>{
+  				rows.forEach(function (row) {
+  					stringHold = stringHold + "<tr>" + "<td>" + row.year + "</td>" +"</tr>";
+					console.log()
+
+  				})
+				resolve(stringHold);
+  				
+  			});
+  			
+  		})
+
+        	replacePromise.then(data=>{
+        		response = response.replace("replace",data);
+        		WriteHtml(res,response);
+        	});
     }).catch((err) => {
         Write404Error(res);
     });
 });
-
-function ReadFile(filename) {
-    return new Promise((resolve, reject) => {
-        fs.readFile(filename, (err, data) => {
-            if (err) {
-                reject(err);
-            }
-            else {
-                resolve(data.toString());
-            }
-        });
-    });
-}
 
 function Write404Error(res) {
     res.writeHead(404, {'Content-Type': 'text/plain'});
