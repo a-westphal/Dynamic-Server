@@ -98,7 +98,7 @@ app.get('/state/:selected_state', (req, res) => {
 			db.all('SELECT * FROM Consumption WHERE state_abbreviation = ? ORDER BY year',[state],(err,rows) =>{
 				rows.forEach(function (row) {
 					total=row.coal+row.natural_gas+row.nuclear+row.petroleum+row.renewable;
-					stringHold=stringHold+"<tr>"+"<td>"+row.state_abbreviation+"</td>" +"<td>"+row.coal+"</td>"+"<td>"+row.natural_gas+"</td>"+"<td>"+row.nuclear+"</td>"+"<td>"+row.petroleum+"</td>"+"<td>"+row.renewable+"</td>"+"<td>"+total+"</td>"+"</tr>";
+					stringHold=stringHold+"<tr>"+"<td>"+row.year+"</td>" +"<td>"+row.coal+"</td>"+"<td>"+row.natural_gas+"</td>"+"<td>"+row.nuclear+"</td>"+"<td>"+row.petroleum+"</td>"+"<td>"+row.renewable+"</td>"+"<td>"+total+"</td>"+"</tr>";
 					})
 					resolve(stringHold);
 			});
@@ -107,6 +107,8 @@ app.get('/state/:selected_state', (req, res) => {
 				response=response.replace("replace",data);
 				response=response.replace("Yearly Snapshot", "Yearly Snapshot of "+ stateName);
 				response= response.replace("In Depth Analysis", "In Depth Analysis of "+stateName);
+				image = "/images/"+state+".jpg";
+				response= response.replace("/images/noimage.jpg",image);
 				WriteHtml(res, response);
 			});
         // modify `response` here
@@ -142,6 +144,19 @@ app.get('/energy-type/:selected_energy_type', (req, res) => {
         Write404Error(res);
     });
 });
+
+function ReadFile(filename) {
+    return new Promise((resolve, reject) => {
+        fs.readFile(filename, (err, data) => {
+            if (err) {
+                reject(err);
+            }
+            else {
+                resolve(data.toString());
+            }
+        });
+    });
+}
 
 function Write404Error(res) {
     res.writeHead(404, {'Content-Type': 'text/plain'});
