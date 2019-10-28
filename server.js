@@ -92,11 +92,22 @@ app.get('/state/:selected_state', (req, res) => {
         let response = template;
 		let state=req.url.substring(7);
 		let stringHold="";
-		let stateName;
+		let stateName =[];
+		let coal_counts=[];
+		let natural_counts=[];
+		let petroleum_counts=[];
+		let renewable_counts=[]; 
+		let nuclear_counts =[];
+
 		var replacePromise= new Promise((resolve,reject)=>{
 			db.each('SELECT * FROM States WHERE state_abbreviation = ?',[state],(err,rows)=>{stateName= rows.state_name});
 			db.all('SELECT * FROM Consumption WHERE state_abbreviation = ? ORDER BY year',[state],(err,rows) =>{
 				rows.forEach(function (row) {
+					coal_counts.push(row.coal);
+					natural_counts.push(row.natural_gas);
+        			nuclear_counts.push(row.nuclear);
+        			petroleum_counts.push(row.petroleum);
+        			renewable_counts.push(row.renewable);
 					total=row.coal+row.natural_gas+row.nuclear+row.petroleum+row.renewable;
 					stringHold=stringHold+"<tr>"+"<td>"+row.year+"</td>" +"<td>"+row.coal+"</td>"+"<td>"+row.natural_gas+"</td>"+"<td>"+row.nuclear+"</td>"+"<td>"+row.petroleum+"</td>"+"<td>"+row.renewable+"</td>"+"<td>"+total+"</td>"+"</tr>";
 					})
@@ -109,6 +120,7 @@ app.get('/state/:selected_state', (req, res) => {
 				response= response.replace("In Depth Analysis", "In Depth Analysis of "+stateName);
 				image = "/images/"+state+".jpg";
 				response= response.replace("/images/noimage.jpg",image);
+				response= response.replace("var state;", "var state =" + state + ";");
 				WriteHtml(res, response);
 			});
         // modify `response` here
@@ -121,15 +133,37 @@ app.get('/state/:selected_state', (req, res) => {
 app.get('/energy-type/:selected_energy_type', (req, res) => {
     ReadFile(path.join(template_dir, 'energy.html')).then((template) => {
         let response = template;
-        let energy = req.url.substring(9);
-        let stringHold = "";
+        let energy = req.url.substring(13);
+        let stringHold = ""; 
+        var data = {};
+        totals = new Array (58).fill(0);
+	   
   		var replacePromise = new Promise((resolve,reject)=> {
-  			db.all('SELECT year, state_abbreviation,coal FROM Consumption ORDER BY year',(err,rows)=>{
+  			db.all('SELECT * FROM Consumption ORDER BY year,state_abbreviation',(err,rows)=>{
   				rows.forEach(function (row) {
-  					stringHold = stringHold + "<tr>" + "<td>" + row.year + "</td>" +"</tr>";
-					console.log()
+  					//check if the year already exists (hasOwnProperty(key))
+  					if(data.hasOwnProperty(row.year)!= true)
+  					{
+  						data[row.year] = new Object ();
+  					}
+  					data[row.year][row.state_abbreviation] = row[energy];
 
   				})
+
+  				let k =0; 
+  				for(let i =1960; i < 2018; i ++)
+  				{
+  					stringHold = stringHold + "<tr>" + "<td> " + i + "</td>";
+
+  					Object.values(data[i]).forEach((value) =>{
+						stringHold = stringHold + "<td>" + value + "</td>";
+						totals[k] = totals[k] + value;
+  					})
+  						 	
+  					stringHold = stringHold + "<td>" + totals[k] + "</td>" + "</tr>";
+  					k = k + 1;
+  				}
+
 				resolve(stringHold);
   				
   			});
@@ -137,7 +171,10 @@ app.get('/energy-type/:selected_energy_type', (req, res) => {
   		})
 
         	replacePromise.then(data=>{
-        		response = response.replace("replace",data);
+        	  	response = response.replace("replace",data);
+        		response = response.replace("In Depth Analysis", "In Depth Analysis of " + energy + " energy");
+        		response = response.replace("Consumption Snapshot", "Consumption Snapshot of "+energy + " energy");
+        		response = response.replace("images/noimage.jpg", "images/"+energy+".jpg");
         		WriteHtml(res,response);
         	});
     }).catch((err) => {
