@@ -91,7 +91,8 @@ app.get('/year/:selected_year', (req, res) => {
     var renew =0;
 	let prev;
 	let next;
-
+				prev=req.url.substring(0,6)+(parseInt(year)-1);
+				next=req.url.substring(0,6)+(parseInt(year)+1);
 		var replacePromise= new Promise((resolve,reject)=>{
 			if(year=="2017")
 			{
@@ -117,11 +118,8 @@ app.get('/year/:selected_year', (req, res) => {
 			});
 		})
 			replacePromise.then(data=>{
-		//	response = response.replace("href =" "","href ="+"""+prev+""");  ask marrnin
-		//	response = response.replace("href =" "","href ="+"""+next+""");
-			console.log(next);
-			console.log(prev);
-			console.log(response);
+			response = response.replace('<a class="prev_next" href="prev">Prev</a>','<a class="prev_next" href='+prev+">Prev</a>");  
+			response = response.replace('<a class="prev_next" href="next">Next</a>','<a class="prev_next" href='+next+">Next</a>"); 
 			
 				response=response.replace("replace",data);
 				response= response.replace("In Depth Analysis", "In Depth Analysis of "+year);
@@ -146,6 +144,9 @@ app.get('/state/:selected_state', (req, res) => {
 		let state=req.url.substring(7);
 		let stringHold="";
 		let stateName;
+		let stateArr= [];
+		let stateBefore;
+		let stateAfter;
 		let coal_counts=[58];
 		let natural_counts=[58];
 		let petroleum_counts=[58];
@@ -153,25 +154,49 @@ app.get('/state/:selected_state', (req, res) => {
 		let nuclear_counts =[58];
 
 		var replacePromise= new Promise((resolve,reject)=>{
+			db.all('SELECT * FROM States ORDER BY state_abbreviation',(err,rows)=>{rows.forEach(function (row){stateArr.push(rows.state_abbreviation)});});
+			
 			db.each('SELECT * FROM States WHERE state_abbreviation = ?',[state],(err,rows)=>{stateName= rows.state_name});
 			db.all('SELECT * FROM Consumption WHERE state_abbreviation = ? ORDER BY year',[state],(err,rows) =>{
 				var count = 0;
-        rows.forEach(function (row) {
+				rows.forEach(function (row) {
 
 					coal_counts[count]=row.coal;
 					natural_counts[count] = (row.natural_gas);
-        	nuclear_counts[count] = (row.nuclear);
-        	petroleum_counts[count] = (row.petroleum);
-        	renewable_counts[count] = (row.renewable);
+					nuclear_counts[count] = (row.nuclear);
+					petroleum_counts[count] = (row.petroleum);
+					renewable_counts[count] = (row.renewable);
 					total=row.coal+row.natural_gas+row.nuclear+row.petroleum+row.renewable;
 					stringHold=stringHold+"<tr>"+"<td>"+row.year+"</td>" +"<td>"+row.coal+"</td>"+"<td>"+row.natural_gas+"</td>"+"<td>"+row.nuclear+"</td>"+"<td>"+row.petroleum+"</td>"+"<td>"+row.renewable+"</td>"+"<td>"+total+"</td>"+"</tr>";
-          count = count + 1;
-					})
-					resolve(stringHold);
+					count = count + 1;
+				})
+				resolve(stringHold);
 			});
 		})
 			replacePromise.then(data=>{
+				for(var i = 0 ; i<stateArr.length;i++)
+			{
+				if(stateArr[i]===state)
+				{
+					if(stateArr[i]==="WY")
+					{
+						stateAfter = req.url.substring(0,7)+"AK";
+						stateBefore = req.url.substring(0,7)+stateArr[i-1];
 
+					}
+					if(stateArr[i] === "AK")
+					{
+						stateBefore= req.url.substring(0,7)+"WY";
+						stateAfter = req.url.substring(0,7)+stateArr[i+1];
+					}
+					else
+					{
+						stateAfter = req.url.substring(0,7)+stateArr[i+1];
+						stateBefore = req.url.substring(0,7)+stateArr[i-1];
+					}
+				}
+			}
+				response = response.replace('<a class="prev_next" href="prev">XX</a>','<a class="prev_next" href="'+stateBefore+'">'+stateBefore.substring(7)+'</a>');
 				response=response.replace("replace",data);
 				response=response.replace("Yearly Snapshot", "Yearly Snapshot of "+ stateName);
 				response= response.replace("In Depth Analysis", "In Depth Analysis of "+stateName);
