@@ -89,8 +89,20 @@ app.get('/year/:selected_year', (req, res) => {
     var nuclear =0;
     var petroleum =0;
     var renew =0;
+	let prev;
+	let next;
 
 		var replacePromise= new Promise((resolve,reject)=>{
+			if(year=="2017")
+			{
+				next = req.url;
+				prev=req.url.substring(0,6)+(parseInt(year)-1);
+			}
+			if(year == "1960")
+			{
+				prev=req.url;
+				next=req.url.substring(0,6)+(parseInt(year)+1);
+			}
 			db.all('SELECT * FROM Consumption WHERE year = ? ORDER BY state_abbreviation',[year],(err,rows) =>{
 				rows.forEach(function (row) {
           coal = coal + row.coal;
@@ -105,6 +117,12 @@ app.get('/year/:selected_year', (req, res) => {
 			});
 		})
 			replacePromise.then(data=>{
+		//	response = response.replace("href =" "","href ="+"""+prev+""");  ask marrnin
+		//	response = response.replace("href =" "","href ="+"""+next+""");
+			console.log(next);
+			console.log(prev);
+			console.log(response);
+			
 				response=response.replace("replace",data);
 				response= response.replace("In Depth Analysis", "In Depth Analysis of "+year);
         response=response.replace("var year;" , "var year = " + year); 
@@ -165,8 +183,10 @@ app.get('/state/:selected_state', (req, res) => {
         response=response.replace("var nuclear_counts;","var nuclear_counts = [" + nuclear_counts + "];");
         response=response.replace("var petroleum_counts;","var petroleum_counts = [" + petroleum_counts + "];");
         response=response.replace("var renewable_counts;","var renewable_counts = [" + renewable_counts + "];");
-				WriteHtml(res, response);
+			WriteHtml(res, response);
+
 			});
+
         // modify `response` here
     }).catch((err) => {
         Write404Error(res);
