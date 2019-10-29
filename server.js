@@ -202,6 +202,7 @@ app.get('/state/:selected_state', (req, res) => {
 				response= response.replace("In Depth Analysis", "In Depth Analysis of "+stateName);
 				image = "/images/"+state+".jpg";
 				response= response.replace("/images/noimage.jpg",image);
+        response=response.replace("No Image","Map of " + "\"" + stateName +"\"");
 				response= response.replace("var state;", "var state = " + "\"" + stateName + "\""+ ";");
         response=response.replace("var coal_counts;","var coal_counts = [" + coal_counts + "];");
         response=response.replace("var natural_gas_counts;","var natural_gas_counts = [" + natural_counts + "];");
@@ -273,9 +274,9 @@ app.get('/energy-type/:selected_energy_type', (req, res) => {
   			});
   			
   		})
-
-        	replacePromise.then(data=>{
-        	  if(energy == "natural_gas")
+          replacePromise.then(data=>{
+            response = response.replace("replace",data);
+            if(energy == "natural_gas")
             { //just to get rid of the underscore 
               response = response.replace("In Depth Analysis", "In Depth Analysis of natural gas");
               response = response.replace("Consumption Snapshot","Consumption Snapshot of natural gas");
@@ -288,11 +289,12 @@ app.get('/energy-type/:selected_energy_type', (req, res) => {
               response = response.replace("<h1>US Energy Consumption!</h1>", "<h1>US Energy Consumption of " + energy + "</h1>" );
               response = response.replace("var energy_type;", "var energy_type = " + "\"" + energy + "\"" +";"); 
             }
-            response = response.replace("replace",data);
-        		response = response.replace("images/noimage.jpg", "images/"+energy+".jpg");
-             console.log(energy);
-        		WriteHtml(res,response);
-        	});
+            
+            response=response.replace("No Image","Visual of " + "\"" + energy + "\"");
+            repsonse=response.replace("var energy_counts;","var energy_counts = " + JSON.stringify(variables) + ";");
+            response=response.replace("images/noimage.jpg", "images/"+energy+".jpg");
+            WriteHtml(res,response);
+          });
     }).catch((err) => {
         Write404Error(res);
     });
