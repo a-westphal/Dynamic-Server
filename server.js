@@ -154,7 +154,43 @@ app.get('/state/:selected_state', (req, res) => {
 		let nuclear_counts =[58];
 
 		var replacePromise= new Promise((resolve,reject)=>{
-			db.all('SELECT * FROM States ORDER BY state_abbreviation',(err,rows)=>{rows.forEach(function (row){stateArr.push(rows.state_abbreviation)});});
+       var statePromise = new Promise((resolve,reject)=>{
+          db.all('SELECT * FROM States ORDER BY state_abbreviation',(err,rows)=>{
+            rows.forEach(function (row){
+             stateArr.push(rows.state_abbreviation)}
+            );
+
+           });
+
+          resolve(stateArr);
+         })
+
+        statePromise.then(data =>{
+          for(var i = 0 ; i<stateArr.length;i++)
+         {
+            if(stateArr[i]===state)
+            {
+              if(stateArr[i]==="WY")
+              {
+                stateAfter = req.url.substring(0,7)+"AK";
+                stateBefore = req.url.substring(0,7)+stateArr[i-1];
+
+              }
+              if(stateArr[i] === "AK")
+              {
+                stateBefore= req.url.substring(0,7)+"WY";
+                stateAfter = req.url.substring(0,7)+stateArr[i+1];
+              }
+              else
+              {
+                stateAfter = req.url.substring(0,7)+stateArr[i+1];
+                stateBefore = req.url.substring(0,7)+stateArr[i-1];
+              }
+            }
+          }
+        })
+      console.log(stateBefore);
+
 			
 			db.each('SELECT * FROM States WHERE state_abbreviation = ?',[state],(err,rows)=>{stateName= rows.state_name});
 			db.all('SELECT * FROM Consumption WHERE state_abbreviation = ? ORDER BY year',[state],(err,rows) =>{
@@ -174,29 +210,7 @@ app.get('/state/:selected_state', (req, res) => {
 			});
 		})
 			replacePromise.then(data=>{
-				for(var i = 0 ; i<stateArr.length;i++)
-			{
-				if(stateArr[i]===state)
-				{
-					if(stateArr[i]==="WY")
-					{
-						stateAfter = req.url.substring(0,7)+"AK";
-						stateBefore = req.url.substring(0,7)+stateArr[i-1];
-
-					}
-					if(stateArr[i] === "AK")
-					{
-						stateBefore= req.url.substring(0,7)+"WY";
-						stateAfter = req.url.substring(0,7)+stateArr[i+1];
-					}
-					else
-					{
-						stateAfter = req.url.substring(0,7)+stateArr[i+1];
-						stateBefore = req.url.substring(0,7)+stateArr[i-1];
-					}
-				}
-			}
-				response = response.replace('<a class="prev_next" href="prev">XX</a>','<a class="prev_next" href="'+stateBefore+'">'+stateBefore.substring(7)+'</a>');
+				//response = response.replace('<a class="prev_next" href="prev">XX</a>','<a class="prev_next" href="'+stateBefore+'">'+stateBefore.substring(7)+'</a>');
 				response=response.replace("replace",data);
 				response=response.replace("Yearly Snapshot", "Yearly Snapshot of "+ stateName);
 				response= response.replace("In Depth Analysis", "In Depth Analysis of "+stateName);
@@ -228,6 +242,9 @@ app.get('/energy-type/:selected_energy_type', (req, res) => {
         var data = {};
         var variables = {};
         totals = new Array (58).fill(0);
+        var energy_list = ['coal','natural_gas','nuclear','petroleum','renewable'];
+        let energyBefore;
+        let energyAfter;
 	   
   		var replacePromise = new Promise((resolve,reject)=> {
         
@@ -269,6 +286,34 @@ app.get('/energy-type/:selected_energy_type', (req, res) => {
   					k = k + 1;
   				}
 
+          for(let i =0; i < energy_list.length; i ++)
+          {
+            if(energy === energy_list[i])
+            {
+              if(energy === 'coal')
+              {
+                energyBefore = req.url.substring(0,13) + energy_list[energy_list.length -1];
+                energyAfter = req.url.substring(0,13) + energy_list[i+1];
+              }
+
+              else if(energy === 'renewable')
+              {
+                energyBefore = req.url.substring(0,13) + energy_list[i-1];
+                energyAfter = req.url.substring(0,13) + energy_list[0];
+              }
+
+              else
+              {
+                energyBefore = req.url.substring(0,13) + energy_list[i-1];
+                energyAfter = req.url.substring(0,13) +energy_list[i+1];
+
+              }
+            }//if 
+          }//for loop
+
+          console.log("energy before: " + energyBefore);
+          console.log("energy after: " + energyAfter);
+
 				resolve(stringHold);
   				
   			});
@@ -289,7 +334,9 @@ app.get('/energy-type/:selected_energy_type', (req, res) => {
               response = response.replace("<h1>US Energy Consumption!</h1>", "<h1>US Energy Consumption of " + energy + "</h1>" );
               response = response.replace("var energy_type;", "var energy_type = " + "\"" + energy + "\"" +";"); 
             }
-            
+
+            response = response.replace('<a class="prev_next" href="">XX</a>','<a class="prev_next" href="'+energyBefore+'">'+energyBefore.substring(13)+'</a>');
+            response = response.replace('<a class="prev_next" href=" ">XX</a>','<a class="prev_next" href="'+energyAfter+'">'+energyAfter.substring(13)+'</a>');
             response=response.replace("No Image","Visual of " + "\"" + energy + "\"");
             repsonse=response.replace("var energy_counts;","var energy_counts = " + JSON.stringify(variables) + ";");
             response=response.replace("images/noimage.jpg", "images/"+energy+".jpg");
