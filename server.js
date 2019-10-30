@@ -147,25 +147,23 @@ app.get('/state/:selected_state', (req, res) => {
 		let stateArr= [];
 		let stateBefore;
 		let stateAfter;
-		let coal_counts=[58];
+		let coal_counts=new Array(58);
 		let natural_counts=[58];
 		let petroleum_counts=[58];
 		let renewable_counts=[58]; 
 		let nuclear_counts =[58];
+		var statePromise = new Promise((resolve,reject)=>{
+			  db.all('SELECT * FROM States ORDER BY state_abbreviation',(err,rows)=>{
+				rows.forEach(function (row){
+				 stateArr.push(row.state_abbreviation)}
+				);
 
-		var replacePromise= new Promise((resolve,reject)=>{
-       var statePromise = new Promise((resolve,reject)=>{
-          db.all('SELECT * FROM States ORDER BY state_abbreviation',(err,rows)=>{
-            rows.forEach(function (row){
-             stateArr.push(rows.state_abbreviation)}
-            );
+			   });
 
-           });
+			  resolve(stateArr);
+			 })
 
-          resolve(stateArr);
-         })
-
-        statePromise.then(data =>{
+       /* statePromise.then(data =>{
           for(var i = 0 ; i<stateArr.length;i++)
          {
             if(stateArr[i]===state)
@@ -188,11 +186,21 @@ app.get('/state/:selected_state', (req, res) => {
               }
             }
           }
-        })
-      console.log(stateBefore);
+        })*/
+      //console.log(stateBefore);
+	  
+	  var state2Promise = new Promise((resolve,reject)=>{
+		  db.each('SELECT * FROM States WHERE state_abbreviation = ?',[state],(err,rows)=>{
+			  stateName= rows.state_name;
+			  resolve(stateName);
 
+		  });
+
+	  });
+
+		var replacePromise= new Promise((resolve,reject)=>{
+		   
 			
-			db.each('SELECT * FROM States WHERE state_abbreviation = ?',[state],(err,rows)=>{stateName= rows.state_name});
 			db.all('SELECT * FROM Consumption WHERE state_abbreviation = ? ORDER BY year',[state],(err,rows) =>{
 				var count = 0;
 				rows.forEach(function (row) {
@@ -209,8 +217,36 @@ app.get('/state/:selected_state', (req, res) => {
 				resolve(stringHold);
 			});
 		})
-			replacePromise.then(data=>{
-				//response = response.replace('<a class="prev_next" href="prev">XX</a>','<a class="prev_next" href="'+stateBefore+'">'+stateBefore.substring(7)+'</a>');
+		
+		Promise.all([state2Promise,statePromise,replacePromise]).then((results)=>{
+			stateName=results[0];
+			stateArr=results[1];
+			data=results[2];
+			
+			for(var i = 0 ; i<stateArr.length;i++)
+			 {
+				if(stateArr[i]===state)
+				{
+				  if(stateArr[i]==="WY")
+				  {
+					stateAfter = req.url.substring(0,7)+"AK";
+					stateBefore = req.url.substring(0,7)+stateArr[i-1];
+
+				  }
+				  if(stateArr[i] === "AK")
+				  {
+					stateBefore= req.url.substring(0,7)+"WY";
+					stateAfter = req.url.substring(0,7)+stateArr[i+1];
+				  }
+				  else
+				  {
+					stateAfter = req.url.substring(0,7)+stateArr[i+1];
+					stateBefore = req.url.substring(0,7)+stateArr[i-1];
+				  }
+				}
+			  }
+			  	response = response.replace('<a class="prev_next" href="prev">XX</a>','<a class="prev_next" href="'+stateBefore+'">'+stateBefore.substring(7)+'</a>');
+				response = response.replace('<a class="prev_next" href="next">XX2</a>','<a class="prev_next" href="'+stateAfter+'">'+stateAfter.substring(7)+'</a>');
 				response=response.replace("replace",data);
 				response=response.replace("Yearly Snapshot", "Yearly Snapshot of "+ stateName);
 				response= response.replace("In Depth Analysis", "In Depth Analysis of "+stateName);
@@ -223,9 +259,13 @@ app.get('/state/:selected_state', (req, res) => {
         response=response.replace("var nuclear_counts;","var nuclear_counts = [" + nuclear_counts + "];");
         response=response.replace("var petroleum_counts;","var petroleum_counts = [" + petroleum_counts + "];");
         response=response.replace("var renewable_counts;","var renewable_counts = [" + renewable_counts + "];");
+
+			  
+			 console.log(stateName, stateBefore, stateAfter);
+			
 			WriteHtml(res, response);
 
-			});
+		});
 
         // modify `response` here
     }).catch((err) => {
