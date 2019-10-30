@@ -60,10 +60,18 @@ app.get('/', (req, res) => {
           renew = renew = row.renewable; 
 
 					})
+
+          if(stringHold == "")
+          {
+            WriteStateError(res,year);
+            reject(stringHold);
+          }
+
 					resolve(stringHold);
 			});
 		})
 			replacePromise.then(data=>{
+
 				response=response.replace("replace",data);
         response=response.replace("var coal_count;", "var coal_count = "+ coal + ";");
         response=response.replace("var natural_gas_count;", "var natural_gas_count = "+ gas + ";");
@@ -131,7 +139,9 @@ app.get('/year/:selected_year', (req, res) => {
         response=response.replace("var renewable_count;", "var renewable_count = "+ renew + ";");
 
 				WriteHtml(res, response);
-			});
+			}).catch((err) =>{
+        WriteYearError(res,year);
+      });
     }).catch((err) => {
         Write404Error(res);
     });
@@ -162,32 +172,6 @@ app.get('/state/:selected_state', (req, res) => {
 
 			  resolve(stateArr);
 			 })
-
-       /* statePromise.then(data =>{
-          for(var i = 0 ; i<stateArr.length;i++)
-         {
-            if(stateArr[i]===state)
-            {
-              if(stateArr[i]==="WY")
-              {
-                stateAfter = req.url.substring(0,7)+"AK";
-                stateBefore = req.url.substring(0,7)+stateArr[i-1];
-
-              }
-              if(stateArr[i] === "AK")
-              {
-                stateBefore= req.url.substring(0,7)+"WY";
-                stateAfter = req.url.substring(0,7)+stateArr[i+1];
-              }
-              else
-              {
-                stateAfter = req.url.substring(0,7)+stateArr[i+1];
-                stateBefore = req.url.substring(0,7)+stateArr[i-1];
-              }
-            }
-          }
-        })*/
-      //console.log(stateBefore);
 	  
 	  var state2Promise = new Promise((resolve,reject)=>{
 		  db.each('SELECT * FROM States WHERE state_abbreviation = ?',[state],(err,rows)=>{
@@ -199,12 +183,9 @@ app.get('/state/:selected_state', (req, res) => {
 	  });
 
 		var replacePromise= new Promise((resolve,reject)=>{
-		   
-			
 			db.all('SELECT * FROM Consumption WHERE state_abbreviation = ? ORDER BY year',[state],(err,rows) =>{
 				var count = 0;
 				rows.forEach(function (row) {
-
 					coal_counts[count]=row.coal;
 					natural_counts[count] = (row.natural_gas);
 					nuclear_counts[count] = (row.nuclear);
@@ -245,7 +226,7 @@ app.get('/state/:selected_state', (req, res) => {
 				  }
 				}
 			  }
-			  	response = response.replace('<a class="prev_next" href="prev">XX</a>','<a class="prev_next" href="'+stateBefore+'">'+stateBefore.substring(7)+'</a>');
+			  response = response.replace('<a class="prev_next" href="prev">XX</a>','<a class="prev_next" href="'+stateBefore+'">'+stateBefore.substring(7)+'</a>');
 				response = response.replace('<a class="prev_next" href="next">XX2</a>','<a class="prev_next" href="'+stateAfter+'">'+stateAfter.substring(7)+'</a>');
 				response=response.replace("replace",data);
 				response=response.replace("Yearly Snapshot", "Yearly Snapshot of "+ stateName);
@@ -265,7 +246,9 @@ app.get('/state/:selected_state', (req, res) => {
 			
 			WriteHtml(res, response);
 
-		});
+		}).catch((err)=>{
+        WriteStateError(res,state);
+    });
 
         // modify `response` here
     }).catch((err) => {
@@ -310,7 +293,7 @@ app.get('/energy-type/:selected_energy_type', (req, res) => {
 
   				})
 
-          console.log(variables);
+          //console.log(variables);
 
   				let k =0; 
   				for(let i =1960; i < 2018; i ++)
@@ -374,13 +357,17 @@ app.get('/energy-type/:selected_energy_type', (req, res) => {
               response = response.replace("<h1>US Energy Consumption!</h1>", "<h1>US Energy Consumption of " + energy + "</h1>" );
               response = response.replace("var energy_type;", "var energy_type = " + "\"" + energy + "\"" +";"); 
             }
-
+            var jvar = JSON.stringify(variables);
+            jvar = jvar.replace(/["']/g,"");
+            console.log(jvar);
             response = response.replace('<a class="prev_next" href="">XX</a>','<a class="prev_next" href="'+energyBefore+'">'+energyBefore.substring(13)+'</a>');
             response = response.replace('<a class="prev_next" href=" ">XX</a>','<a class="prev_next" href="'+energyAfter+'">'+energyAfter.substring(13)+'</a>');
             response=response.replace("No Image","Visual of " + "\"" + energy + "\"");
-            repsonse=response.replace("var energy_counts;","var energy_counts = " + JSON.stringify(variables) + ";");
+            repsonse=response.replace("var energy_counts;","var energy_counts = " + jvar + ";");
             response=response.replace("images/noimage.jpg", "images/"+energy+".jpg");
             WriteHtml(res,response);
+          }).catch((err)=>{
+            WriteEnergyError(res,energy);
           });
     }).catch((err) => {
         Write404Error(res);
@@ -398,6 +385,24 @@ function ReadFile(filename) {
             }
         });
     });
+}
+
+function WriteYearError(res,year){
+  res.writeHead(404, {'Content-Type': 'text/plain'});
+  res.write('Error: year not in database: ' + year);
+  res.end();
+}
+
+function WriteStateError(res,state){
+  res.writeHead(404, {'Content-Type': 'text/plain'});
+  res.write('Error: given state not valid: ' + state);
+  res.end();
+}
+
+function WriteEnergyError(res,energy){
+  res.writeHead(404, {'Content-Type': 'text/plain'});
+  res.write('Error: energy type not in database: ' + energy);
+  res.end();
 }
 
 function Write404Error(res) {
