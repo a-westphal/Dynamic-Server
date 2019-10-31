@@ -126,8 +126,11 @@ app.get('/year/:selected_year', (req, res) => {
 			});
 		})
 			replacePromise.then(data=>{
-			response = response.replace('<a class="prev_next" href="prev">Prev</a>','<a class="prev_next" href='+prev+">Prev</a>");  
-			response = response.replace('<a class="prev_next" href="next">Next</a>','<a class="prev_next" href='+next+">Next</a>"); 
+
+        console.log("prev:" + prev);
+        console.log("next:" + next);
+        response = response.replace('<a class="prev_next" href="prev">Prev</a>','<a class="prev_next" href='+prev+">Prev</a>");  
+        response = response.replace('<a class="prev_next" href="next">Next</a>','<a class="prev_next" href='+next+">Next</a>"); 
 			
 				response=response.replace("replace",data);
 				response= response.replace("In Depth Analysis", "In Depth Analysis of "+year);
@@ -137,6 +140,7 @@ app.get('/year/:selected_year', (req, res) => {
         response=response.replace("var nuclear_count;", "var nuclear_count = " + nuclear + ";");
         response=response.replace("var petroleum_count;", "var petroleum = "+petroleum + ";");
         response=response.replace("var renewable_count;", "var renewable_count = "+ renew + ";");
+        response=response.replace()
 
 				WriteHtml(res, response);
 			}).catch((err) =>{
@@ -358,12 +362,11 @@ app.get('/energy-type/:selected_energy_type', (req, res) => {
               response = response.replace("var energy_type;", "var energy_type = " + "\"" + energy + "\"" +";"); 
             }
             var jvar = JSON.stringify(variables);
-            jvar = jvar.replace(/["']/g,"");
             console.log(jvar);
             response = response.replace('<a class="prev_next" href="">XX</a>','<a class="prev_next" href="'+energyBefore+'">'+energyBefore.substring(13)+'</a>');
             response = response.replace('<a class="prev_next" href=" ">XX</a>','<a class="prev_next" href="'+energyAfter+'">'+energyAfter.substring(13)+'</a>');
             response=response.replace("No Image","Visual of " + "\"" + energy + "\"");
-            repsonse=response.replace("var energy_counts;","var energy_counts = " + jvar + ";");
+            response=response.replace("var energy_counts;","var energy_counts =  " +  jvar + ";");
             response=response.replace("images/noimage.jpg", "images/"+energy+".jpg");
             WriteHtml(res,response);
           }).catch((err)=>{
